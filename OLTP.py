@@ -43,8 +43,8 @@ def save_to_mysql(subscriptions):
     conn = mysql.connector.connect(
         user="root",
         password="root",
-        host="127.0.0.1",  # Change this to your MySQL host
-        port=3307,
+        host="93.132.159.115",  # Replace with your actual public IP address
+        port=3307,  # Use the mapped port (3307)
         database="alex"
     )
 
