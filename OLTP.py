@@ -5,7 +5,7 @@ import mysql.connector
 # Function to generate random subscriptions data
 def generate_subscriptions(last_run_time):
     subscriptions = []
-    for _ in range(10):
+    for _ in range(5):
         start_date = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(random.randint(int(last_run_time), int(time.time()))))
         start_timestamp = int(time.mktime(time.strptime(start_date, "%Y-%m-%d %H:%M:%S")))
         expiration_timestamp = start_timestamp + 28 * 24 * 60 * 60  # Adding 28 days in seconds
@@ -23,19 +23,16 @@ def generate_subscriptions(last_run_time):
 # Function to create the subscriptions table
 def create_table(conn):
     cursor = conn.cursor()
-
-    query = """
-    CREATE TABLE IF NOT EXISTS subscriptions (
-        subscription_id INT PRIMARY KEY,
-        user_id INT,
-        subscription_type VARCHAR(255),
-        start_date TIMESTAMP,
-        expiration_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    )
-    """
-    cursor.execute(query)
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS subscriptions (
+            subscription_id INT PRIMARY KEY,
+            user_id INT,
+            subscription_type VARCHAR(255),
+            start_date DATETIME,
+            expiration_date DATETIME
+        )
+    """)
     conn.commit()
-
     cursor.close()
 
 # Function to save data to MySQL database using mysql-connector
@@ -43,7 +40,7 @@ def save_to_mysql(subscriptions):
     conn = mysql.connector.connect(
         user="root",
         password="root",
-        host="93.132.159.115",  # Replace with your actual public IP address
+        host="127.0.0.1",  # Replace with your actual public IP address
         port=3307,  # Use the mapped port (3307)
         database="alex"
     )
@@ -56,7 +53,12 @@ def save_to_mysql(subscriptions):
     for subscription in subscriptions:
         query = """
             INSERT INTO subscriptions (subscription_id, user_id, subscription_type, start_date, expiration_date)
-            VALUES (%s, %s,%s, %s, %s)
+            VALUES (%s, %s, %s, %s, %s)
+            ON DUPLICATE KEY UPDATE
+            user_id = VALUES(user_id),
+            subscription_type = VALUES(subscription_type),
+            start_date = VALUES(start_date),
+            expiration_date = VALUES(expiration_date)
         """
         values = (
             subscription["subscription_id"],
@@ -72,11 +74,10 @@ def save_to_mysql(subscriptions):
     cursor.close()
     conn.close()
 
-interval_seconds = 6 * 60 * 60  # 6 hours in seconds
+if __name__ == "__main__":
+    interval_seconds = 30 * 60  # 30 minutes in seconds
+    last_run_time = time.time() - interval_seconds
 
-last_run_time = time.time() - interval_seconds
-
-while True:
     current_time = time.time()
     subscriptions_data = generate_subscriptions(last_run_time)
 
@@ -84,5 +85,4 @@ while True:
     save_to_mysql(subscriptions_data)
 
     print(f"Subscriptions data updated at {time.strftime('%Y-%m-%d %H:%M:%S')}")
-    time.sleep(interval_seconds)
 
